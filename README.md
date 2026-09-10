@@ -43,18 +43,38 @@ npm run dev
 
 Open `http://localhost:5173`. The Vite dev server proxies `/api/*` to the backend.
 
-### 3. Optional: enable OpenAI
+### 3. Optional: enable a hosted provider
+
+Any OpenAI-compatible API works. Copy the example env file and edit it:
 
 ```powershell
 cd backend
 Copy-Item .env.example .env
-# edit .env and set OPENAI_API_KEY=sk-...
 ```
 
+**OpenAI:**
+
+```dotenv
+AI_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+```
+
+**OpenRouter (works with a free model, no billing needed):**
+
+```dotenv
+AI_PROVIDER=openai
+OPENAI_API_KEY=sk-or-...
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+EMBEDDING_MODEL=openai/text-embedding-3-small
+CHAT_MODEL=nvidia/nemotron-3-super-120b-a12b:free
+```
+
+> Verified against OpenRouter with `nvidia/nemotron-3-super-120b-a12b:free` (fast, follows the
+> grounded prompt, clean refusals). If it is temporarily rate-limited, try
+> `nex-agi/nex-n2.5-pro:free` or any other `:free` model from `GET /api/v1/models`.
+
 Restart the backend. `/health` will report `"provider": "openai"` with the configured
-embedding/chat models (`text-embedding-3-small` + `gpt-4o-mini` by default). Any
-OpenAI-compatible gateway works via `OPENAI_BASE_URL`. Restart the frontend to pick up the
-provider badge.
+embedding/chat models. Restart the frontend to pick up the provider badge.
 
 > Switching providers changes the embedding space: previously ingested chunks are skipped with a
 > warning until re-ingested. See [Design notes](./docs/DESIGN.md) §3.

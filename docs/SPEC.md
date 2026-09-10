@@ -190,7 +190,8 @@ covers all non-whitespace input; consecutive chunks share overlap when possible.
 ## 7. URL fetching (`services/fetcher.py`)
 
 `fetch_url(url, settings) -> FetchedPage(title, text, final_url)` using sync `httpx.Client`
-(`follow_redirects=True`, timeout from settings, UA `TuriumBot/1.0 (+assignment demo)`).
+(`follow_redirects=True`, timeout from settings, UA from `FETCH_USER_AGENT`; sites like Wikipedia
+reject UAs without contact info, so the default includes a `+URL` contact token).
 
 Validation/errors (all `AppError`):
 - scheme must be http/https else `INVALID_URL` (400).
@@ -233,7 +234,9 @@ class ChatProvider(Protocol):
 `offline.py`:
 - `OfflineEmbeddingProvider(dimension=512)`: tokens `re.findall(r"[a-z0-9']+", text.lower())`;
   stable per-token hash with `hashlib.blake2b(token.encode(), digest_size=8)` (never Python `hash`);
-  accumulate `1 + ln(tf)` weight per token; L2 normalize; empty input -> zero vector.
+  **sparse signed hashing**: each token maps to one dimension (`h % dim`) with a sign bit taken
+  from the hash, so texts with disjoint vocabularies have cosine exactly 0; accumulate
+  `1 + ln(tf)` weight per token; L2 normalize; empty input -> zero vector.
   `name="offline"`, `model=f"offline-hashing-{dim}"`. Docstring states plainly: lexical, not semantic.
 - `OfflineChatProvider(embedding_provider)`: split each source chunk into sentences
   (`re.split(r'(?<=[.!?])\s+', ...)`), embed sentences + question, score cosine, keep up to 4
@@ -254,7 +257,7 @@ Errors from the SDK -> `AppError("UPSTREAM_AI_ERROR", 502)` with sanitized messa
 
 `answer_question(store_ctx, question, top_k, embedder, chat, settings) -> QueryResult`:
 1. `question_vec = embedder.embed([question])[0]`.
-2. `scored = store.search(...)`.
+2. `scored = store.search(...)` — chunks with cosine `<= 0` are dropped (no overlap = no retrieval).
 3. If no chunks at all -> canned answer `"You haven't saved anything yet — add a note or URL first."` + no citations, no LLM call.
 4. If retrieval empty (zero vector / no match) -> canned `"I couldn't find anything relevant in your saved items."`, citations [].
 5. Else build citations (index 1..n) and call `chat.answer`.

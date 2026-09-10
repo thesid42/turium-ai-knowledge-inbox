@@ -69,13 +69,22 @@ The assignment wants OpenAI *or equivalent*. Since a reviewer may not have a key
 - `AI_PROVIDER=openai` — `text-embedding-3-small` (1536-d) + `gpt-4o-mini` chat, grounded
   prompt with bracketed citations and an explicit "not in your saved content" instruction.
 - `AI_PROVIDER=offline` — deterministic fallback so the full pipeline runs without any key:
-  - Embeddings: the **hashing trick** — tokenize, hash each token with `blake2b` into a 512-d
-    vector, weight by `1 + ln(tf)`, L2-normalize. This is *lexical* similarity, not semantic.
-    Be honest about it: it exists for demo-ability and deterministic tests, and the UI labels it.
+  - Embeddings: the **hashing trick** with sparse signed indexing — tokenize, hash each token
+    with `blake2b`, map it to one dimension (`hash % dim`) with a stable sign bit, weight by
+    `1 + ln(tf)`, L2-normalize. Sparse indexing matters: disjoint vocabularies get a cosine of
+    exactly 0 (dense random projections would give every pair a small accidental similarity).
+    This is *lexical* similarity, not semantic. Be honest about it: it exists for demo-ability
+    and deterministic tests, and the UI labels it.
   - Chat: extractive answering — score source sentences against the question with the same
     embedding, return the best few with `[k]` markers. No hallucination by construction.
 - `AI_PROVIDER=auto` (default) — picks OpenAI when `OPENAI_API_KEY` is set, otherwise offline,
   and logs the choice at startup. `/health` reports the active mode so the UI can badge it.
+
+The OpenAI provider is a standard OpenAI-compatible client (`OPENAI_BASE_URL` override), so
+gateways like OpenRouter work without code changes. This build was verified end-to-end against
+OpenRouter with `openai/text-embedding-3-small` for embeddings and
+`nvidia/nemotron-3-super-120b-a12b:free` for answers — a free model that follows the grounded
+prompt, cites `[k]` correctly, and refuses cleanly when the answer is not in context.
 
 Why not a local transformer (sentence-transformers/ONNX)? It would give real semantic quality
 offline, but adds ~100 MB model downloads and heavy dependencies to a 6–12 hour assignment.
