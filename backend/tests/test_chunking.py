@@ -119,3 +119,31 @@ class TestChunkText:
             assert a.content == b.content
             assert a.char_start == b.char_start
             assert a.char_end == b.char_end
+
+    def test_offsets_exact_with_overlap(self):
+        text = "Sentence one. Sentence two. Sentence three. " * 40
+        normalized = normalize_text(text)
+        chunks = chunk_text(text, max_chars=200, overlap_chars=50, min_chars=30)
+        assert len(chunks) > 1
+        for c in chunks:
+            assert normalized[c.char_start:c.char_end] == c.content
+
+    def test_no_content_dropped(self):
+        text = "Alpha beta gamma delta. " * 100 + "\n\n" + "word " * 200
+        normalized = normalize_text(text)
+        chunks = chunk_text(text, max_chars=300, overlap_chars=100, min_chars=50)
+        covered = [False] * len(normalized)
+        for c in chunks:
+            for i in range(c.char_start, c.char_end):
+                covered[i] = True
+        for i, ch in enumerate(normalized):
+            if not ch.isspace():
+                assert covered[i], f"character {i} ({ch!r}) missing from every chunk"
+
+    def test_overlap_never_exceeds_max(self):
+        # Dense text with no paragraph breaks: overlap must be clipped to the budget
+        text = "word " * 1000
+        chunks = chunk_text(text, max_chars=250, overlap_chars=200, min_chars=50)
+        assert len(chunks) > 1
+        for c in chunks:
+            assert len(c.content) <= 250

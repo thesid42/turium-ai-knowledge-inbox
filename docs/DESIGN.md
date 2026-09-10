@@ -38,8 +38,13 @@ upgrade to OpenAI by setting one env var. The provider interface is the seam.
 Algorithm (deterministic): normalize whitespace → split on blank lines into paragraphs →
 greedily pack paragraphs up to the limit → for oversized paragraphs, pack sentences →
 for oversized sentences, split at word boundaries → prepend a word-boundary-trimmed overlap
-tail to each new chunk → merge a tiny trailing chunk into the previous one. Offsets are kept
-so citations can point at positions in the raw content.
+tail to each new chunk → merge a tiny trailing chunk into the previous one.
+
+The implementation works on **character spans** of the normalized text, so every chunk is
+exactly `normalized[char_start:char_end]`: offsets are exact, chunk text is never mutated, and
+overlap is clipped to the remaining size budget instead of overflowing (a naive prepend can
+silently drop the tail of a chunk — a data-loss bug this design rules out). Tests assert
+verbatim content, full coverage of non-whitespace input, and the size cap.
 
 Rationale:
 
