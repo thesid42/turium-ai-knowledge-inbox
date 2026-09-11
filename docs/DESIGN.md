@@ -73,6 +73,8 @@ The assignment wants OpenAI *or equivalent*. Since a reviewer may not have a key
 
 - `AI_PROVIDER=openai` — `text-embedding-3-small` (1536-d) + `gpt-4o-mini` chat, grounded
   prompt with bracketed citations and an explicit "not in your saved content" instruction.
+  Models sometimes emit provider-specific citation glyphs (`【1†L1-L4】`); these are normalized
+  to `[k]` at the provider boundary, and the web client renders answers as markdown.
 - `AI_PROVIDER=offline` — deterministic fallback so the full pipeline runs without any key:
   - Embeddings: the **hashing trick** with sparse signed indexing — tokenize, hash each token
     with `blake2b`, map it to one dimension (`hash % dim`) with a stable sign bit, weight by
@@ -148,7 +150,8 @@ Full contract in [`API.md`](./API.md). Notable choices:
 
 - **Structured JSON logs to stdout** (`ts`, `level`, `logger`, `message`, `request_id` + context
   fields), one completion line per request (method, path, status, `duration_ms`). No print
-  debugging; no PII beyond what the user saved.
+  debugging; no PII beyond what the user saved. Uvicorn's own access log is disabled so the
+  JSON line is the *only* per-request output; third-party HTTP client loggers are quieted.
 - **Request-scoped context** via `contextvars`, so service code can log `request_id` without
   threading it through every signature.
 - **Health endpoint** reports provider mode and corpus size (`items`, `chunks`) — first thing to

@@ -159,6 +159,8 @@ Fields: `question` 1–1000 chars (trimmed), `top_k` 1–20 (default `DEFAULT_TO
 
 Notes:
 
+- The `answer` field is **markdown** — the web client renders lists, bold, headings and code.
+  Provider-specific citation glyphs (e.g. `【1†L1-L4】`) are normalized to `[k]` server-side.
 - With an **empty knowledge base** the response is 200 with a canned
   `"You haven't saved anything yet — add a note or URL first."` and no citations. No LLM call.
 - With **no relevant retrieval** the answer says so instead of guessing.

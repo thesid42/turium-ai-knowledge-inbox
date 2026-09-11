@@ -259,6 +259,8 @@ system = "You are a knowledge assistant. Answer ONLY from the user's saved conte
 Cite every claim with bracketed source numbers, e.g. [1]. If the answer is not in the content,
 say you couldn't find it in the saved items. Be concise."
 user = numbered blocks `[k] (title — source)\ncontent` then `Question: ...`. temperature 0.2.
+Responses are post-processed with `normalize_citations()` so provider-specific glyphs
+(`【1†L1-L4】`, `[1†L1-L2]`) become `[1]`.
 Errors from the SDK -> `AppError("UPSTREAM_AI_ERROR", 502)` with sanitized message (no key leakage).
 
 ## 9. RAG (`services/rag.py`)
@@ -342,7 +344,8 @@ Empty content after normalization (e.g. URL page with no text) -> 422 `VALIDATIO
 
 - **Structured logging**: JSON lines to stdout: `ts`, `level`, `logger`, `message`, `request_id`,
   plus extras (method, path, status, duration_ms, provider, item_id, ...). One middleware logs each
-  request completion. Errors log with `exc_info` for 5xx only.
+  request completion; uvicorn's plain-text access log is disabled to avoid duplicate lines.
+  Errors log with `exc_info` for 5xx only.
 - **Validation**: pydantic models, `extra="forbid"`. `RequestValidationError` handler flattens to
   `details.errors = [{loc, msg, type}]` (no Python reprs).
 - **Endpoints are sync `def`** (FastAPI threadpool); pipeline is blocking by design.
@@ -369,8 +372,10 @@ Empty content after normalization (e.g. URL page with no text) -> 422 `VALIDATIO
   `n chunks`, delete button with confirm; click expands -> fetches `GET /items/{id}` once and shows
   numbered chunk previews (mono, truncated). Source URLs open in a new tab.
 - `QueryPanel`: question input + Ask button; loading state; disabled when empty.
-- `AnswerCard`: answer text (preserve paragraph breaks), provider/model footer, warnings banner,
-  numbered citation cards (index badge, title/source link, quoted snippet, score to 2 dp).
+- `AnswerCard`: answer text rendered as markdown via `react-markdown` (Tailwind-mapped
+  paragraphs, lists, headings, code, links, quotes; raw HTML disabled), provider/model footer,
+  warnings banner, numbered citation cards (index badge, title/source link, quoted snippet,
+  score to 2 dp).
 - Accessibility basics: labels, `aria-busy` on loading regions, buttons have discernible text.
 - No router, no Redux, no shadcn, no extra UI deps beyond Tailwind.
 

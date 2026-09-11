@@ -3,20 +3,22 @@
 A minimal, production-style RAG app: save short notes and URLs, then ask questions over
 everything you've saved. Answers come from your own content and cite the exact source chunks.
 
-Built for the [assignment brief](./Turium_AI_Interview_Assignment.pdf) with FastAPI + SQLite on
-the backend and React + Tailwind on the frontend.
+FastAPI + SQLite on the backend, React + Tailwind on the frontend.
 
 ## Features
 
 - **Ingest** plain-text notes or URLs (server-side fetch, HTML→text extraction; Google
-  Docs/Sheets/Slides links are auto-exported to plain text instead of the JS shell)
-- **Semantic search + RAG**: structure-aware chunking → embeddings → vector search → grounded
-  answer with numbered citations
+  Docs/Sheets/Slides links are auto-exported to plain text instead of the JS shell — share
+  the document as "Anyone with the link")
+- **Semantic search + RAG**: structure-aware chunking → embeddings → vector search → grounded,
+  markdown-rendered answers with numbered citations
 - **Works with zero setup**: deterministic offline provider (hashed lexical embeddings +
   extractive answers) so the whole pipeline runs without an API key
-- **Upgrades to OpenAI** by setting one env var — same pipeline, same API
-- Structured JSON logs, consistent error envelope, `X-Request-ID` tracing, input validation
-- Duplicate detection (409), SSRF guard on URL ingest, size/content-type caps
+- **Upgrades to OpenAI or any OpenAI-compatible gateway** (e.g. OpenRouter) via env vars
+- **Debuggable by default**: one structured JSON log line per request (uvicorn's duplicate
+  access log is disabled), `X-Request-ID` tracing, consistent error envelope, input validation
+- Duplicate detection (409), SSRF guard on URL ingest, fetch size/content-type caps, and clear
+  errors for private or JavaScript-only pages instead of indexing garbage
 
 ## Quickstart
 
@@ -77,8 +79,14 @@ CHAT_MODEL=nvidia/nemotron-3-super-120b-a12b:free
 Restart the backend. `/health` will report `"provider": "openai"` with the configured
 embedding/chat models. Restart the frontend to pick up the provider badge.
 
-> Switching providers changes the embedding space: previously ingested chunks are skipped with a
-> warning until re-ingested. See [Design notes](./docs/DESIGN.md) §3.
+**Answer quality notes**
+
+- Provider-specific citation glyphs (e.g. `【1†L1-L4】`) are normalized to `[1]` before the
+  answer leaves the API, and the UI renders answers as markdown (lists, bold, code).
+- Switching providers changes the embedding space: previously ingested chunks are skipped with
+  a warning until re-ingested. See [Design notes](./docs/DESIGN.md) §3.
+- Private Google Docs cannot be fetched (`/edit` pages need JavaScript); share them as
+  "Anyone with the link" or paste the text as a note.
 
 ## Configuration
 
@@ -89,11 +97,13 @@ The most useful ones:
 |---|---|---|
 | `AI_PROVIDER` | `auto` | `auto` \| `openai` \| `offline` |
 | `OPENAI_API_KEY` | — | enables OpenAI when present |
+| `OPENAI_BASE_URL` | — | OpenAI-compatible base URL (OpenRouter, Azure, proxies) |
 | `EMBEDDING_MODEL` | `text-embedding-3-small` | hosted embedding model |
 | `CHAT_MODEL` | `gpt-4o-mini` | hosted answer model |
 | `DB_PATH` | `./data/knowledge.db` | SQLite file (content + vectors) |
 | `CHUNK_MAX_CHARS` / `CHUNK_OVERLAP_CHARS` | `1000` / `150` | chunking knobs |
 | `FETCH_MAX_BYTES` / `FETCH_TIMEOUT_SECONDS` | `5000000` / `10` | URL fetch limits |
+| `FETCH_USER_AGENT` | browser-like + contact URL | UA sent on fetches; keep a contact `+URL` for sites like Wikipedia |
 | `ALLOW_PRIVATE_URLS` | `false` | disable the SSRF guard (local testing only) |
 | `LOG_LEVEL` | `INFO` | structured JSON log verbosity |
 
@@ -117,7 +127,19 @@ cd backend
 
 cd ..\frontend
 npm run build                            # TypeScript + Vite production build
+npm run lint                             # oxlint, zero warnings
 ```
+
+## Operational notes
+
+- **Logs**: exactly one structured JSON line per request (method, path, status, `duration_ms`,
+  `request_id`); uvicorn's plain-text access log is intentionally disabled. Set `LOG_LEVEL=DEBUG`
+  for more detail.
+- **`GET /v1/models` 404s in the logs are expected**: local tools (editors/LLM detectors) probe
+  port 8000 as if it were an OpenAI-compatible server; Turium answers with its normal 404
+  envelope. It does not affect the app.
+- **Re-ingest after changing the embedding provider** — old vectors are skipped with a warning
+  (dimension mismatch), not silently compared.
 
 ## Project layout
 
@@ -126,19 +148,19 @@ backend/
   app/
     main.py            # app factory, lifespan, middleware
     config.py          # pydantic-settings
-    logging_config.py  # JSON logs + request-id context
+    logging_config.py  # JSON logs + request-id context (uvicorn access log off)
     errors.py          # error envelope + handlers
     schemas.py         # request/response models
     db.py / store.py   # SQLite schema, CRUD, vector search
     routers/           # health, ingest, items, query
-    services/          # chunking, fetcher, rag
-    providers/         # offline + openai, selected by factory
+    services/          # chunking, fetcher (Google export rewrite), rag
+    providers/         # offline + openai, selected by factory, citation normalization
   tests/
 frontend/
   src/
     api/client.ts      # typed API client
     hooks/             # useItems, useQuery, useHealth
-    components/        # IngestForm, ItemList, QueryPanel, AnswerCard, …
+    components/        # IngestForm, ItemList, QueryPanel, AnswerCard (markdown), …
 docs/
   API.md               # HTTP contract with examples
   DESIGN.md            # tradeoffs, scaling limits, production changes
