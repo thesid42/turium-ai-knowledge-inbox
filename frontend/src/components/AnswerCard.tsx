@@ -4,6 +4,8 @@
 
 import type { Citation } from '../types';
 import { WarningBanner, EmptyState } from './ui';
+import ReactMarkdown from 'react-markdown';
+import type { HTMLAttributes, AnchorHTMLAttributes } from 'react';
 
 interface AnswerCardProps {
   answer: string | null;
@@ -23,33 +25,94 @@ function getHostnameSafe(url: string): string {
   }
 }
 
+const formatScore = (score: number): string => {
+  return score.toFixed(2);
+};
+
+const getProviderLabel = (provider: string | null): string => {
+  if (!provider) return 'Unknown';
+  return provider === 'offline' ? 'Offline (lexical)' : provider;
+};
+
+const Paragraph = ({ children }: HTMLAttributes<HTMLParagraphElement>) => (
+  <p className="mb-3 last:mb-0 leading-relaxed text-slate-700">{children}</p>
+);
+
+const Strong = ({ children }: HTMLAttributes<HTMLElement>) => (
+  <strong className="font-semibold text-slate-900">{children}</strong>
+);
+
+const UnorderedList = ({ children }: HTMLAttributes<HTMLUListElement>) => (
+  <ul className="list-disc pl-5 mb-3 space-y-1">{children}</ul>
+);
+
+const OrderedList = ({ children }: HTMLAttributes<HTMLOListElement>) => (
+  <ol className="list-decimal pl-5 mb-3 space-y-1">{children}</ol>
+);
+
+const ListItem = ({ children }: HTMLAttributes<HTMLLIElement>) => (
+  <li className="pl-0.5">{children}</li>
+);
+
+const Heading1 = ({ children }: HTMLAttributes<HTMLHeadingElement>) => (
+  <h1 className="font-semibold text-slate-900 mt-4 mb-2 text-3xl">{children}</h1>
+);
+
+const Heading2 = ({ children }: HTMLAttributes<HTMLHeadingElement>) => (
+  <h2 className="font-semibold text-slate-900 mt-4 mb-2 text-2xl">{children}</h2>
+);
+
+const Heading3 = ({ children }: HTMLAttributes<HTMLHeadingElement>) => (
+  <h3 className="font-semibold text-slate-900 mt-4 mb-2 text-xl">{children}</h3>
+);
+
+const InlineCode = ({ children, className }: HTMLAttributes<HTMLElement>) =>
+  className && typeof className === 'string' && className.startsWith('language-') ? (
+    <code className={className}>{children}</code>
+  ) : (
+    <code className="bg-slate-100 text-indigo-700 px-1.5 py-0.5 rounded text-sm font-mono">
+      {children}
+    </code>
+  );
+
+const Pre = ({ children }: HTMLAttributes<HTMLPreElement>) => (
+  <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto mb-3 text-sm">
+    {children}
+  </pre>
+);
+
+const Link = ({ children, href, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
+  <a
+    href={href}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-indigo-600 hover:underline"
+    {...props}
+  >
+    {children}
+  </a>
+);
+
+const Blockquote = ({ children }: HTMLAttributes<HTMLQuoteElement>) => (
+  <blockquote className="border-l-4 border-slate-200 pl-3 text-slate-600 mb-3">{children}</blockquote>
+);
+
+const markdownComponents = {
+  p: Paragraph,
+  strong: Strong,
+  ul: UnorderedList,
+  ol: OrderedList,
+  li: ListItem,
+  h1: Heading1,
+  h2: Heading2,
+  h3: Heading3,
+  code: InlineCode,
+  pre: Pre,
+  a: Link,
+  blockquote: Blockquote,
+};
+
 export function AnswerCard({ answer, citations, provider, model, warnings, loading, error }: AnswerCardProps) {
-  const formatAnswer = (text: string): React.ReactNode => {
-    // Split by double newlines for paragraphs
-    const paragraphs = text.split(/\n\n+/).filter((p) => p.trim().length > 0);
-    if (paragraphs.length <= 1) {
-      return <p className="whitespace-pre-wrap">{text}</p>;
-    }
-    return (
-      <div className="prose">
-        {paragraphs.map((para, i) => (
-          <p key={i} className="whitespace-pre-wrap">
-            {para}
-          </p>
-        ))}
-      </div>
-    );
-  };
-
-  const formatScore = (score: number): string => {
-    return score.toFixed(2);
-  };
-
-  const getProviderLabel = (provider: string | null): string => {
-    if (!provider) return 'Unknown';
-    return provider === 'offline' ? 'Offline (lexical)' : provider;
-  };
-
   if (loading && !answer) {
     return (
       <section className="card" aria-busy="true" aria-label="Generating answer">
@@ -102,8 +165,8 @@ export function AnswerCard({ answer, citations, provider, model, warnings, loadi
           )}
         </h2>
 
-        <div className="prose text-slate-700 leading-relaxed mb-5">
-          {formatAnswer(answer)}
+        <div className="mb-5">
+          <ReactMarkdown components={markdownComponents}>{answer}</ReactMarkdown>
         </div>
 
         {warnings.length > 0 && (
