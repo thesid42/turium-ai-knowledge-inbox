@@ -63,7 +63,7 @@ class OpenAIChatProvider:
         for src in sources:
             title_part = src.title or "Untitled"
             source_part = src.source or "note"
-            header = f"[{src.citation_index}] ({title_part} — {source_part})"
+            header = f"[{src.citation_index}] ({title_part}, {source_part})"
             context_blocks.append(f"{header}\n{src.content}")
 
         context = "\n\n".join(context_blocks)

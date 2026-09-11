@@ -6,7 +6,7 @@ class TestQueryEmptyStore:
         resp = client.post("/query", json={"question": "What did I save?"})
         assert resp.status_code == 200
         data = resp.json()
-        assert data["answer"] == "You haven't saved anything yet — add a note or URL first."
+        assert data["answer"] == "You haven't saved anything yet. Add a note or URL first."
         assert data["citations"] == []
         assert data["retrieved"] == 0
         assert data["provider"] == "offline"

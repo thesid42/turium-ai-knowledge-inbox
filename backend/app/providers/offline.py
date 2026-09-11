@@ -87,14 +87,14 @@ class OfflineChatProvider:
         if not sources:
             return (
                 "I couldn't find anything relevant in your saved items. "
-                "(Offline mode uses keyword matching — set OPENAI_API_KEY for semantic answers.)"
+                "(Offline mode uses keyword matching; set OPENAI_API_KEY for semantic answers.)"
             )
 
         question_vec = self.embedding_provider.embed([question])[0]
         if all(v == 0.0 for v in question_vec):
             return (
                 "I couldn't find anything relevant in your saved items. "
-                "(Offline mode uses keyword matching — set OPENAI_API_KEY for semantic answers.)"
+                "(Offline mode uses keyword matching; set OPENAI_API_KEY for semantic answers.)"
             )
 
         # Collect all sentences with their source info
@@ -111,7 +111,7 @@ class OfflineChatProvider:
         if not all_sentences:
             return (
                 "I couldn't find anything relevant in your saved items. "
-                "(Offline mode uses keyword matching — set OPENAI_API_KEY for semantic answers.)"
+                "(Offline mode uses keyword matching; set OPENAI_API_KEY for semantic answers.)"
             )
 
         # Sort by score descending
@@ -121,7 +121,7 @@ class OfflineChatProvider:
         if best_score <= 0:
             return (
                 "I couldn't find anything relevant in your saved items. "
-                "(Offline mode uses keyword matching — set OPENAI_API_KEY for semantic answers.)"
+                "(Offline mode uses keyword matching; set OPENAI_API_KEY for semantic answers.)"
             )
 
         threshold = max(0.05, 0.5 * best_score)
@@ -142,7 +142,7 @@ class OfflineChatProvider:
         if not selected:
             return (
                 "I couldn't find anything relevant in your saved items. "
-                "(Offline mode uses keyword matching — set OPENAI_API_KEY for semantic answers.)"
+                "(Offline mode uses keyword matching; set OPENAI_API_KEY for semantic answers.)"
             )
 
         # Format answer with citation markers

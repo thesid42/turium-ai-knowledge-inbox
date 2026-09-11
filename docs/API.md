@@ -6,29 +6,29 @@ all timestamps are ISO 8601 UTC.
 
 ## Conventions
 
-- **Error envelope** — every non-2xx response has this shape:
+- **Error envelope**: every non-2xx response has this shape:
 
   ```json
   { "error": { "code": "FETCH_FAILED", "message": "human readable", "details": { } } }
   ```
 
-- **Request ID** — every response carries `X-Request-ID`. Send your own to trace a call
+- **Request ID**: every response carries `X-Request-ID`. Send your own to trace a call
   end-to-end through the JSON logs.
 
 - **Status codes**
 
   | Code | Meaning |
   |------|---------|
-  | `VALIDATION_ERROR` | 422 — schema/limits violated (including no usable content) |
-  | `NOT_FOUND` | 404 — item or route does not exist |
-  | `DUPLICATE_ITEM` | 409 — identical content already saved (`details.item_id`) |
-  | `INVALID_URL` | 400 — not a valid http/https URL |
-  | `BLOCKED_URL` | 400 — resolves to a private/loopback/reserved address |
-  | `UNSUPPORTED_CONTENT_TYPE` | 415 — page is not text/html or text/plain |
-  | `CONTENT_TOO_LARGE` | 413 — page exceeds `FETCH_MAX_BYTES` |
-  | `FETCH_FAILED` | 502 — upstream fetch failed (timeout, DNS, non-2xx) |
-  | `UPSTREAM_AI_ERROR` | 502 — embedding/chat provider call failed |
-  | `INTERNAL_ERROR` | 500 — unexpected server error (check logs via `X-Request-ID`) |
+  | `VALIDATION_ERROR` | 422: schema/limits violated (including no usable content) |
+  | `NOT_FOUND` | 404: item or route does not exist |
+  | `DUPLICATE_ITEM` | 409: identical content already saved (`details.item_id`) |
+  | `INVALID_URL` | 400: not a valid http/https URL |
+  | `BLOCKED_URL` | 400: resolves to a private/loopback/reserved address |
+  | `UNSUPPORTED_CONTENT_TYPE` | 415: page is not text/html or text/plain |
+  | `CONTENT_TOO_LARGE` | 413: page exceeds `FETCH_MAX_BYTES` |
+  | `FETCH_FAILED` | 502: upstream fetch failed (timeout, DNS, non-2xx) |
+  | `UPSTREAM_AI_ERROR` | 502: embedding/chat provider call failed |
+  | `INTERNAL_ERROR` | 500: unexpected server error (check logs via `X-Request-ID`) |
 
 ## GET /health
 
@@ -86,7 +86,7 @@ Response (201):
 
 Errors: 422 (bad payload, empty content), 409 (duplicate), 400/413/415/502 for URL issues.
 
-> **Google Docs / Sheets / Slides:** the `/edit` links are JavaScript apps — a plain fetch only
+> **Google Docs / Sheets / Slides:** the `/edit` links are JavaScript apps: a plain fetch only
 > sees a browser-support shell. Turium detects them and fetches the export endpoint instead
 > (`text/plain` for Docs/Slides, `text/csv` for Sheets), keeping the original link as `source`.
 > The document must be shared as "Anyone with the link", otherwise ingest fails with a clear 502
@@ -108,7 +108,7 @@ curl "http://localhost:8000/items?limit=20&offset=0"
 
 ## GET /items/{id}
 
-Item metadata plus every stored chunk with character offsets — useful for inspecting what the
+Item metadata plus every stored chunk with character offsets, useful for inspecting what the
 chunker produced.
 
 ```bash
@@ -159,10 +159,10 @@ Fields: `question` 1–1000 chars (trimmed), `top_k` 1–20 (default `DEFAULT_TO
 
 Notes:
 
-- The `answer` field is **markdown** — the web client renders lists, bold, headings and code.
+- The `answer` field is **markdown**: the web client renders lists, bold, headings and code.
   Provider-specific citation glyphs (e.g. `【1†L1-L4】`) are normalized to `[k]` server-side.
 - With an **empty knowledge base** the response is 200 with a canned
-  `"You haven't saved anything yet — add a note or URL first."` and no citations. No LLM call.
+  `"You haven't saved anything yet. Add a note or URL first."` and no citations. No LLM call.
 - With **no relevant retrieval** the answer says so instead of guessing.
 - `warnings` reports skipped chunks when they were embedded with a different model/dimension
   (e.g. you ingested offline, then enabled OpenAI). Re-ingest after switching providers.

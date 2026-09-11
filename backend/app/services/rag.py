@@ -37,7 +37,7 @@ def answer_question(
     # 3. No chunks at all
     if count_items(conn) == 0:
         return QueryResult(
-            answer="You haven't saved anything yet — add a note or URL first.",
+            answer="You haven't saved anything yet. Add a note or URL first.",
             citations=[],
             provider=chat.name,
             model=chat.model,

@@ -1,4 +1,4 @@
-# Turium — Implementation Specification (v1, frozen)
+# Turium: Implementation Specification (v1, frozen)
 
 Internal build spec for the AI Knowledge Inbox assignment. This is the contract the
 implementation workers must follow. Do not change API shapes, error codes, file layout,
@@ -250,7 +250,7 @@ class ChatProvider(Protocol):
   (`re.split(r'(?<=[.!?])\s+', ...)`), embed sentences + question, score cosine, keep up to 4
   sentences with `score >= max(0.05, 0.5 * best_score)`, dedupe identical, return them joined as
   a short answer with `[k]` markers matching citation index. If best score <= 0 or no sources:
-  `"I couldn't find anything relevant in your saved items. (Offline mode uses keyword matching — set OPENAI_API_KEY for semantic answers.)"`
+  `"I couldn't find anything relevant in your saved items. (Offline mode uses keyword matching; set OPENAI_API_KEY for semantic answers.)"`
   `name="offline"`, `model="offline-extractive"`.
 
 `openai_provider.py`: `OpenAIEmbeddingProvider` batches inputs (<= 100 per call, preserve order);
@@ -258,7 +258,7 @@ class ChatProvider(Protocol):
 system = "You are a knowledge assistant. Answer ONLY from the user's saved content below.
 Cite every claim with bracketed source numbers, e.g. [1]. If the answer is not in the content,
 say you couldn't find it in the saved items. Be concise."
-user = numbered blocks `[k] (title — source)\ncontent` then `Question: ...`. temperature 0.2.
+user = numbered blocks `[k] (title, source)\ncontent` then `Question: ...`. temperature 0.2.
 Responses are post-processed with `normalize_citations()` so provider-specific glyphs
 (`【1†L1-L4】`, `[1†L1-L2]`) become `[1]`.
 Errors from the SDK -> `AppError("UPSTREAM_AI_ERROR", 502)` with sanitized message (no key leakage).
@@ -267,14 +267,14 @@ Errors from the SDK -> `AppError("UPSTREAM_AI_ERROR", 502)` with sanitized messa
 
 `answer_question(store_ctx, question, top_k, embedder, chat, settings) -> QueryResult`:
 1. `question_vec = embedder.embed([question])[0]`.
-2. `scored = store.search(...)` — chunks with cosine `<= 0` are dropped (no overlap = no retrieval).
-3. If no chunks at all -> canned answer `"You haven't saved anything yet — add a note or URL first."` + no citations, no LLM call.
+2. `scored = store.search(...)`: chunks with cosine `<= 0` are dropped (no overlap = no retrieval).
+3. If no chunks at all -> canned answer `"You haven't saved anything yet. Add a note or URL first."` + no citations, no LLM call.
 4. If retrieval empty (zero vector / no match) -> canned `"I couldn't find anything relevant in your saved items."`, citations [].
 5. Else build citations (index 1..n) and call `chat.answer`.
 6. `warnings`: if `count_mismatched_chunks(dim) > 0` -> "N chunks were embedded with a different model and were skipped; re-ingest content after changing the AI provider."
 7. `QueryResult(answer, citations, provider=chat.name, model=chat.model, retrieved=len(scored), latency_ms, warnings)`.
 
-## 10. HTTP API (contract — frozen)
+## 10. HTTP API (frozen contract)
 
 Error envelope (all errors, including validation):
 

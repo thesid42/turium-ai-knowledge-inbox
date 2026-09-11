@@ -1,4 +1,4 @@
-# Turium — Design Notes & Tradeoffs
+# Turium: Design Notes & Tradeoffs
 
 This document is the reasoning behind the implementation. The frozen build contract lives in
 [`SPEC.md`](./SPEC.md); the HTTP surface is documented in [`API.md`](./API.md).
@@ -30,7 +30,7 @@ Two request flows:
 Everything is designed to run with **zero external services** (offline provider) and to
 upgrade to OpenAI by setting one env var. The provider interface is the seam.
 
-## 2. Chunking strategy — and why
+## 2. Chunking strategy, and why
 
 **Chosen: character-based, structure-aware packing. Max 1000 chars, 150-char overlap,
 50-char minimum merge.**
@@ -43,7 +43,7 @@ tail to each new chunk → merge a tiny trailing chunk into the previous one.
 The implementation works on **character spans** of the normalized text, so every chunk is
 exactly `normalized[char_start:char_end]`: offsets are exact, chunk text is never mutated, and
 overlap is clipped to the remaining size budget instead of overflowing (a naive prepend can
-silently drop the tail of a chunk — a data-loss bug this design rules out). Tests assert
+silently drop the tail of a chunk, a data-loss bug this design rules out). Tests assert
 verbatim content, full coverage of non-whitespace input, and the size cap.
 
 Rationale:
@@ -57,7 +57,7 @@ Rationale:
   overlap preserves context that straddles a boundary.
 - **Characters, not tokens.** A tokenizer dependency (tiktoken) buys accuracy we don't need at
   this scale, at the cost of a heavier, model-coupled ingest path. Chars are language-agnostic,
-  deterministic, and — critically — cheap to unit test. Model context windows are large enough
+  deterministic, and (critically) cheap to unit test. Model context windows are large enough
   that a ±25% token estimate error is irrelevant here.
 - **No semantic/recursive-LLM chunking.** Better in theory, but it costs an LLM pass per item,
   makes ingest non-deterministic and untestable offline, and is overkill for short notes.
@@ -67,30 +67,30 @@ Tradeoffs accepted: code blocks and tables can be split awkwardly (word-boundary
 fallback); overlap duplication slightly inflates storage and can produce duplicate top-k hits
 (mitigation: dedupe by chunk id at retrieval, which is inherent).
 
-## 3. Embeddings — provider abstraction with an offline fallback
+## 3. Embeddings: provider abstraction with an offline fallback
 
 The assignment wants OpenAI *or equivalent*. Since a reviewer may not have a key, the app ships:
 
-- `AI_PROVIDER=openai` — `text-embedding-3-small` (1536-d) + `gpt-4o-mini` chat, grounded
+- `AI_PROVIDER=openai`: `text-embedding-3-small` (1536-d) + `gpt-4o-mini` chat, grounded
   prompt with bracketed citations and an explicit "not in your saved content" instruction.
   Models sometimes emit provider-specific citation glyphs (`【1†L1-L4】`); these are normalized
   to `[k]` at the provider boundary, and the web client renders answers as markdown.
-- `AI_PROVIDER=offline` — deterministic fallback so the full pipeline runs without any key:
-  - Embeddings: the **hashing trick** with sparse signed indexing — tokenize, hash each token
+- `AI_PROVIDER=offline`: deterministic fallback so the full pipeline runs without any key:
+  - Embeddings: the **hashing trick** with sparse signed indexing: tokenize, hash each token
     with `blake2b`, map it to one dimension (`hash % dim`) with a stable sign bit, weight by
     `1 + ln(tf)`, L2-normalize. Sparse indexing matters: disjoint vocabularies get a cosine of
     exactly 0 (dense random projections would give every pair a small accidental similarity).
     This is *lexical* similarity, not semantic. Be honest about it: it exists for demo-ability
     and deterministic tests, and the UI labels it.
-  - Chat: extractive answering — score source sentences against the question with the same
+  - Chat: extractive answering: score source sentences against the question with the same
     embedding, return the best few with `[k]` markers. No hallucination by construction.
-- `AI_PROVIDER=auto` (default) — picks OpenAI when `OPENAI_API_KEY` is set, otherwise offline,
+- `AI_PROVIDER=auto` (default): picks OpenAI when `OPENAI_API_KEY` is set, otherwise offline,
   and logs the choice at startup. `/health` reports the active mode so the UI can badge it.
 
 The OpenAI provider is a standard OpenAI-compatible client (`OPENAI_BASE_URL` override), so
 gateways like OpenRouter work without code changes. This build was verified end-to-end against
 OpenRouter with `openai/text-embedding-3-small` for embeddings and
-`nvidia/nemotron-3-super-120b-a12b:free` for answers — a free model that follows the grounded
+`nvidia/nemotron-3-super-120b-a12b:free` for answers, a free model that follows the grounded
 prompt, cites `[k]` correctly, and refuses cleanly when the answer is not in context.
 
 Why not a local transformer (sentence-transformers/ONNX)? It would give real semantic quality
@@ -102,7 +102,7 @@ Every chunk row stores `embedding_model`, `embedding_provider`, and `embedding_d
 filters to the current dimension and returns a warning when mismatched chunks were skipped.
 Re-embedding after a provider switch is documented as a production job (out of scope here).
 
-## 4. Vector store — SQLite + in-process numpy cosine
+## 4. Vector store: SQLite + in-process numpy cosine
 
 **Chosen: embeddings stored as float32 BLOBs in the same SQLite database as the content,
 brute-force cosine similarity computed in-process with numpy.**
@@ -117,19 +117,19 @@ Rationale:
 - Cosine simplifies to a dot product because vectors are L2-normalized at write time, so
   retrieval is one matrix-vector multiply.
 
-Sizing sanity: 512-d float32 ≈ 2 KB/chunk. 10k chunks ≈ 20 MB loaded per query — tens of
+Sizing sanity: 512-d float32 ≈ 2 KB/chunk. 10k chunks ≈ 20 MB loaded per query, tens of
 milliseconds end to end on a laptop. Comfortable for the assignment's scale; see §7 for the
 breaking points.
 
 Rejected alternatives: FAISS (fast, but an index file separate from content, serialization
 discipline, and still in-process), Chroma/Qdrant/pgvector (real solutions, unjustified ops
-burden here), in-memory-only (loses data on restart — unacceptable for a "knowledge inbox").
+burden here), in-memory-only (loses data on restart: unacceptable for a "knowledge inbox").
 
 ## 5. API design decisions
 
 Full contract in [`API.md`](./API.md). Notable choices:
 
-- **One error envelope for everything** — validation, domain, and unexpected errors all return
+- **One error envelope for everything**: validation, domain, and unexpected errors all return
   `{"error": {code, message, details}}` with a stable machine-readable `code`. Clients branch on
   `code`, not on prose.
 - **Status codes that mean something**: 422 validation, 409 duplicate content, 400 invalid or
@@ -137,12 +137,12 @@ Full contract in [`API.md`](./API.md). Notable choices:
 - **Discriminated union on `type`** for ingest (`note` | `url`) with `extra="forbid"` so typos
   fail loudly instead of silently no-op-ing.
 - **Dedupe** by SHA-256 of normalized content. Re-saving the same note/URL returns 409 with the
-  existing id instead of silently accumulating duplicates — the common failure of inbox apps.
+  existing id instead of silently accumulating duplicates, the common failure of inbox apps.
 - **`/query` metadata is part of the response** (`provider`, `model`, `retrieved`, `latency_ms`,
-  `warnings`) — answer quality is debuggable without server logs.
+  `warnings`): answer quality is debuggable without server logs.
 - **Canned answers without LLM calls** for empty-store and no-retrieval cases: no cost, instant,
   and the message tells the user what to do.
-- **`X-Request-ID`** on every response, generated per request or echoed from the caller — ties a
+- **`X-Request-ID`** on every response, generated per request or echoed from the caller, ties a
   complaint in the UI to a JSON log line.
 - `GET /items/{id}` returns chunks, which makes the chunking visible and verifiable in the UI.
 
@@ -154,9 +154,9 @@ Full contract in [`API.md`](./API.md). Notable choices:
   JSON line is the *only* per-request output; third-party HTTP client loggers are quieted.
 - **Request-scoped context** via `contextvars`, so service code can log `request_id` without
   threading it through every signature.
-- **Health endpoint** reports provider mode and corpus size (`items`, `chunks`) — first thing to
+- **Health endpoint** reports provider mode and corpus size (`items`, `chunks`): first thing to
   check when behavior is surprising.
-- Validation errors are flattened to `{loc, msg, type}` — stable for clients, no Python reprs.
+- Validation errors are flattened to `{loc, msg, type}`: stable for clients, no Python reprs.
 - 5xx errors log `exc_info`; 4xx log at warning level without stack traces.
 
 ## 7. What breaks at scale (honest limits)
