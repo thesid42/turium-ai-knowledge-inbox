@@ -1,8 +1,22 @@
+import re
+
 import numpy as np
 from openai import OpenAI, OpenAIError
 
 from app.errors import AppError, create_error
 from app.providers.base import ChatProvider, EmbeddingProvider, RetrievedChunk
+
+# Some models emit provider-specific citation glyphs (e.g. 【1†L1-L4】) despite the
+# prompt asking for [1]; normalize them so the UI and answer text stay consistent.
+_CITATION_GLYPH_RE = re.compile(r"【\s*(\d+)\s*[^】]*】")
+_CITATION_DAGGER_RE = re.compile(r"\[\s*(\d+)\s*†[^\]]*\]")
+
+
+def normalize_citations(text: str) -> str:
+    """Rewrite model-specific citation markers to bracketed numeric ones: 【1†L1-L4】 -> [1]."""
+    text = _CITATION_GLYPH_RE.sub(r"[\1]", text)
+    text = _CITATION_DAGGER_RE.sub(r"[\1]", text)
+    return text
 
 
 class OpenAIEmbeddingProvider:
@@ -71,7 +85,7 @@ class OpenAIChatProvider:
                 ],
                 temperature=0.2,
             )
-            return resp.choices[0].message.content or ""
+            return normalize_citations(resp.choices[0].message.content or "")
         except OpenAIError as e:
             raise create_error(
                 "UPSTREAM_AI_ERROR",

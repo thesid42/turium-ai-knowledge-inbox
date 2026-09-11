@@ -26,7 +26,7 @@ class JSONFormatter(logging.Formatter):
                 "name", "msg", "args", "created", "filename", "funcName", "levelname",
                 "levelno", "lineno", "module", "msecs", "message", "name", "pathname",
                 "process", "processName", "relativeCreated", "thread", "threadName",
-                "exc_info", "exc_text", "stack_info"
+                "exc_info", "exc_text", "stack_info", "taskName"
             }:
                 log_data[key] = value
 
@@ -45,9 +45,16 @@ def setup_logging(level: str = "INFO") -> None:
 
     # Reduce noise from third-party loggers
     logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpx2").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("openai").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+    # The request middleware already emits a structured line per request;
+    # silence uvicorn's duplicate plain-text access log.
+    access_logger = logging.getLogger("uvicorn.access")
+    access_logger.disabled = True
+    access_logger.propagate = False
 
 
 def get_logger(name: str) -> logging.Logger:
