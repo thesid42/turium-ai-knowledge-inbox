@@ -190,7 +190,9 @@ for the LLM but worth a dedupe/MMR pass at scale.
 8. **Observability**: OpenTelemetry traces spanning ingest/retrieve/generate, Prometheus
    metrics (retrieval latency, empty-retrieval rate, token usage), alerting.
 9. **Hardening the fetcher**: robots.txt, per-domain politeness/rate limits, fetch cache with
-   TTL + ETag, JS-rendered pages via a headless renderer, malware/URL reputation checks.
+   TTL + ETag, malware/URL reputation checks. Google Docs/Sheets/Slides links are already
+   rewritten to their export endpoints (see `fetcher.google_export_url`); other JS-rendered
+   pages need a headless renderer.
 10. **Ops**: Dockerfile + compose, schema migrations (Alembic), secrets manager, backups of the
     SQLite file (or move to Postgres), CI for tests/lint/build.
 11. **Answer quality**: context-window budgeting per model, citation validation (verify the

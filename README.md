@@ -8,7 +8,8 @@ the backend and React + Tailwind on the frontend.
 
 ## Features
 
-- **Ingest** plain-text notes or URLs (server-side fetch, HTML→text extraction)
+- **Ingest** plain-text notes or URLs (server-side fetch, HTML→text extraction; Google
+  Docs/Sheets/Slides links are auto-exported to plain text instead of the JS shell)
 - **Semantic search + RAG**: structure-aware chunking → embeddings → vector search → grounded
   answer with numbered citations
 - **Works with zero setup**: deterministic offline provider (hashed lexical embeddings +

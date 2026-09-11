@@ -86,6 +86,12 @@ Response (201):
 
 Errors: 422 (bad payload, empty content), 409 (duplicate), 400/413/415/502 for URL issues.
 
+> **Google Docs / Sheets / Slides:** the `/edit` links are JavaScript apps — a plain fetch only
+> sees a browser-support shell. Turium detects them and fetches the export endpoint instead
+> (`text/plain` for Docs/Slides, `text/csv` for Sheets), keeping the original link as `source`.
+> The document must be shared as "Anyone with the link", otherwise ingest fails with a clear 502
+> message instead of indexing an empty shell.
+
 ## GET /items
 
 Newest first. Pagination: `limit` 1–100 (default 50), `offset` ≥ 0.

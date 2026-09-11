@@ -203,7 +203,15 @@ Validation/errors (all `AppError`):
 
 HTML -> text: BeautifulSoup `html.parser`; drop `script,style,noscript,header,footer,nav,form,svg,iframe`;
 pick `<article>` / `<main>` / `[role=main]` / `body` (first present); text via `get_text("\n", strip=True)`;
-title from `<title>`, else first `<h1>`, else hostname. `text/plain`: body as-is.
+title from `<title>`, else first `<h1>`, else hostname. Single newlines from inline tags are
+collapsed to spaces. `text/plain`: body as-is (utf-8-sig decode).
+
+Google Docs/Sheets/Slides links (`docs.google.com/{document,spreadsheets,presentation}/d/<id>`)
+are rewritten to export endpoints (`.txt` / `.csv`) before fetching; the original URL is kept as
+`source`, the first line of a text export becomes the title, and an HTML response to an export
+request (private doc) fails with a clear `FETCH_FAILED` instead of indexing a shell page.
+`text/csv` is an accepted content type. Short pages matching the browser-support shell marker
+fail loudly rather than indexing garbage.
 
 ## 8. Providers (`app/providers/`)
 
