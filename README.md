@@ -114,6 +114,32 @@ npm run build                            # TypeScript + Vite production build
 npm run lint                             # oxlint
 ```
 
+## Design decisions and tradeoffs
+
+- **Chunking: ~1000 chars, 150-char overlap, paragraph/sentence-aware.** Structure-aware splits
+  keep chunks coherent, and the overlap preserves context that straddles a boundary. Tradeoff:
+  fixed-size windows are simpler but cut sentences; semantic chunking costs an LLM pass per item
+  and can't be tested offline. Chunks are exact slices of the normalized text, so citation
+  offsets are always accurate and no content is dropped.
+- **Embeddings: OpenAI `text-embedding-3-small`, with a deterministic offline fallback.** Real
+  semantic quality when a key exists; keyword hashing keeps the app fully runnable (and tests
+  deterministic) without one. Tradeoff: offline mode is lexical, not semantic — labelled as such
+  in the UI.
+- **Vector store: SQLite + in-process numpy cosine.** Content and vectors commit in one
+  transaction (no dual-write bugs), zero extra infra, one-file backup. Brute-force scan is
+  milliseconds at this scale; tradeoff: O(N) retrieval with no ANN index — the point where
+  pgvector/Qdrant + HNSW would take over.
+- **Provider abstraction (one interface, two implementations).** Switching providers or pointing
+  at any OpenAI-compatible gateway (OpenRouter, Azure) is environment config only. Tradeoff:
+  embedding spaces differ per model, so chunks from a different provider are skipped with a
+  warning until re-ingested.
+- **Grounded answers with citations; no LLM call when retrieval is empty.** Answers use only
+  retrieved chunks and carry numbered sources; empty or irrelevant queries return a canned
+  response instantly. Tradeoff: strict grounding makes the model refuse rather than improvise.
+- **Synchronous, single-service design.** FastAPI, SQLite, inline fetch/LLM calls — simple to run
+  and debug. Tradeoff: those are the scaling bottlenecks later (queue, streaming, horizontal
+  scaling); the full list and production path is in [`docs/DESIGN.md`](./docs/DESIGN.md).
+
 ## Documentation
 
 - [`docs/API.md`](./docs/API.md) — HTTP contract, error codes, examples
