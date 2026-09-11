@@ -30,3 +30,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Local-only: interview brief, kept out of the public repo
+Turium_AI_Interview_Assignment.pdf
